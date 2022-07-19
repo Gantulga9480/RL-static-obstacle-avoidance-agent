@@ -5,7 +5,7 @@ MAX_REPLAY_BUFFER = 1500
 TARGET_NET_UPDATE_FREQ = 18
 MAIN_NET_TRAIN_FREQ = 3
 EPISODE_STEP = 5000
-CURRENT_TRAIN_ID = '7_1_21_126_84_42_21_4'
+CURRENT_TRAIN_ID = 'model_id'
 
 model = DQN()
 env = Environment('train_env.json')
