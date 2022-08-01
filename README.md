@@ -1,4 +1,7 @@
 # **Single obstacle avoidance agent learned using DQN.**
+    The environment built on custom 'Game' module.
+    The current implementation version of Game module `Game-Cython BETA 0.1`
+    8/1/2022
 
 # Prerequisite
     pip install pygame==2.0.1
