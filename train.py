@@ -5,7 +5,7 @@ MAX_REPLAY_BUFFER = 1500
 TARGET_NET_UPDATE_FREQ = 18
 MAIN_NET_TRAIN_FREQ = 3
 EPISODE_STEP = 5000
-CURRENT_TRAIN_ID = 'model_id'
+CURRENT_TRAIN_ID = '20221106'
 
 model = DQN()
 env = Environment('train_env.json')
@@ -15,6 +15,7 @@ r_sum = 0
 step_count = 0
 episode_count = 0
 last_avg_reward = 0
+avg_reward_hist = []
 
 while env.running:
     state = env.reset()
@@ -30,6 +31,7 @@ while env.running:
             episode_count += 1
             step_count = 1
             avg_reward = round(r_sum/EPISODE_STEP, 2)
+            avg_reward_hist.append(avg_reward)
             r_sum = 0
             if avg_reward > last_avg_reward:
                 last_avg_reward = avg_reward
@@ -59,5 +61,10 @@ while env.running:
         ])
         print(info)
 
+# save trained model
 path = '/'.join(['model', CURRENT_TRAIN_ID, 'model'])
 model.save(path)
+
+# save training reward history
+with open('reward_hist.csv', 'w') as f:
+    f.write('\n'.join([str(item) for item in avg_reward_hist]))

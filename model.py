@@ -43,10 +43,9 @@ class DQN:
     def create_model(self) -> Sequential:
         model = Sequential()
         model.add(Input(shape=(21,)))
-        model.add(Dense(126, activation='relu'))
-        model.add(Dense(84, activation='relu'))
-        model.add(Dense(42, activation='relu'))
-        model.add(Dense(21, activation='relu'))
+        model.add(Dense(88, activation='relu'))
+        model.add(Dense(44, activation='relu'))
+        model.add(Dense(22, activation='relu'))
         model.add(Dense(4, activation='linear'))
         model.compile(loss="mse",
                       optimizer=Adam(learning_rate=self.LEARNING_RATE),
@@ -68,6 +67,7 @@ class DQN:
         except IOError:
             print('Model file not found!')
             exit()
+        self.main_model.summary()
 
     def update_target(self):
         self.target_model.set_weights(self.main_model.get_weights())

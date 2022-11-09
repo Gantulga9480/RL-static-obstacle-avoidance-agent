@@ -1,0 +1,5 @@
+pygame>=2.0.1
+numpy>=1.19.5
+
+# Manual installation is prefered
+# tensorflow-gpu
