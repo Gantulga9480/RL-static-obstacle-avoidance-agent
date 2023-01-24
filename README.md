@@ -43,6 +43,17 @@ python create_env.py
     <li>f -> Save current environment and exit</li>
 </ul>
 
+### Note on creating new environment
+Only ONE dynamic object has to be created.
+The model trained on only one dynamic agent.
+So the trained model has some initial knowledge about
+the shape and size of the object acting upon.
+Keep the file structure be like test environment file.
+The dynamic object has type of 1 and placed at the bottom of environment file.
+We encourage you to use the pre-defined test env environment file.
+You may change the initial position for your environment. So the agent
+wont stuck insided of other static shapes.
+
 ## Training
 In train.py
 Set optional HYPERPARAMETERs
