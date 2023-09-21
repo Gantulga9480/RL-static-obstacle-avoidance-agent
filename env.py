@@ -198,6 +198,7 @@ class Environment(Game):
                 self.over = True
 
     # def USR_loop(self):
+    #     """Manual control"""
     #     if self.keys[pg.K_UP]:
     #         self.agent.Accelerate(0.15)
     #     elif self.keys[pg.K_DOWN]:

@@ -7,6 +7,7 @@ from Game.physics import (object_body,
 import pygame as pg
 import math
 import json
+import datetime as dt
 
 
 class Test(Game):
@@ -112,7 +113,8 @@ class Test(Game):
                     c['y'] = body[5]
                     a.append(c)
                 d['bodies'] = a
-                with open('test_env.json', 'w') as f:
+                fname = int(dt.datetime.timestamp(dt.datetime.now()))
+                with open(f'env_{fname}.json', 'w') as f:
                     json.dump(d, f)
                 self.running = False
 
