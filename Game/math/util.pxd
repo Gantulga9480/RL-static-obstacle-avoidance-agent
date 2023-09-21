@@ -1,1 +1,0 @@
-cpdef double LSI(double p0x, double p0y, double p1x, double p1y, double p2x, double p2y, double p3x, double p3y)
