@@ -10,7 +10,13 @@ from Game.physics import Engine
 import pygame as pg
 import numpy as np
 import json
-from math import dist
+import math
+
+
+def dist(point_a, point_b):
+    x1, y1 = point_a
+    x2, y2 = point_b
+    return math.hypot(x1-x2, y1-y2)
 
 
 FORWARD = 0
@@ -40,7 +46,7 @@ class Sensor:
     def state(self):
         s = []
         for ray in self.rays:
-            d = dist([ray.x, ray.y], [0, 0])
+            d = math.hypot(ray.x, ray.y)
             if d == 0:
                 s.append(ray.radius)
             else:
