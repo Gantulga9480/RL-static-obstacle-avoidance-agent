@@ -1,22 +1,16 @@
-from Game.base import Game
-from Game.graphic import CartesianPlane
-from Game.physics import (object_body,
+from Game.Game.game import Game
+from Game.Game.graphic import CartesianPlane
+from Game.Game.physics import (Body,
                           DynamicPolygonBody,
                           StaticPolygonBody,
                           StaticRectangleBody,
                           FreePolygonBody,
                           Ray)
-from Game.physics import Engine
+from Game.Game.physics import EnginePolygon as Engine
 import pygame as pg
 import numpy as np
 import json
 import math
-
-
-def dist(point_a, point_b):
-    x1, y1 = point_a
-    x2, y2 = point_b
-    return math.hypot(x1-x2, y1-y2)
 
 
 FORWARD = 0
@@ -64,37 +58,39 @@ class Environment(Game):
     HEIGHT = 1080
 
     def __init__(self, path: str) -> None:
-        super().__init__('Test environment',
-                         self.WIDTH, self.HEIGHT, 60,
-                         pg.FULLSCREEN | pg.HWSURFACE, True)
-        self.plane = CartesianPlane(self.window, (self.width, self.height),
+        super().__init__()
+        self.title = 'Test environment'
+        self.size = (self.WIDTH, self.HEIGHT)
+        self.fps = 60
+        self.window_flags = pg.FULLSCREEN | pg.HWSURFACE
+        self.plane = CartesianPlane(self.window, self.size,
                                     unit_length=1)
-        self.bodies: list[object_body] = []
+        self.bodies: list[Body] = []
 
         self.over = False
 
-        y = self.height / 2
+        y = self.size[1] / 2
         for _ in range(28):
-            vec = self.plane.createVector(-self.width/2, y)
+            vec = self.plane.createVector(-self.size[0]/2, y)
             self.bodies.append(
                 StaticRectangleBody(0,
                                     CartesianPlane(self.window, (40, 40), vec),
                                     (40, 40)))
-            vec = self.plane.createVector(self.width/2, y)
+            vec = self.plane.createVector(self.size[0]/2, y)
             self.bodies.append(
                 StaticRectangleBody(0,
                                     CartesianPlane(self.window, (40, 40), vec),
                                     (40, 40)))
             y -= 40
 
-        x = -self.width/2 + 40
+        x = -self.size[0]/2 + 40
         for _ in range(47):
-            vec = self.plane.createVector(x, self.height / 2)
+            vec = self.plane.createVector(x, self.size[1] / 2)
             self.bodies.append(
                 StaticRectangleBody(0,
                                     CartesianPlane(self.window, (40, 40), vec),
                                     (40, 40)))
-            vec = self.plane.createVector(x, -self.height / 2)
+            vec = self.plane.createVector(x, -self.size[1] / 2)
             self.bodies.append(
                 StaticRectangleBody(0,
                                     CartesianPlane(self.window, (40, 40), vec),
@@ -137,7 +133,7 @@ class Environment(Game):
         self.bodies.append(a)
 
         self.engine = Engine(self.plane,
-                             np.array(self.bodies, dtype=object_body))
+                             np.array(self.bodies, dtype=Body))
 
     def step(self, action):
         if action == FORWARD:
