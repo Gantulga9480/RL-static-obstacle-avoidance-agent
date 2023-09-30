@@ -1,9 +1,9 @@
-from Game.base import Game
-from Game.graphic import CartesianPlane
-from Game.physics import (object_body,
-                          StaticRectangleBody,
-                          StaticPolygonBody,
-                          DynamicPolygonBody)
+from Game.Game.game import Game
+from Game.Game.physics.body import (Body,
+                                    StaticRectangleBody,
+                                    StaticPolygonBody,
+                                    DynamicPolygonBody)
+from Game.Game.graphic.cartesian import CartesianPlane
 import pygame as pg
 import math
 import json
@@ -23,24 +23,24 @@ class Test(Game):
 
         self.plane = CartesianPlane(self.window, (width, height),
                                     unit_length=1)
-        self.frames: list[object_body] = []
+        self.frames: list[Body] = []
         self.bodies = []
 
         y = height / 2
         for i in range(28):
-            vec = self.plane.createVector(-width/2, y)
+            vec = self.plane.createVector(-width / 2, y)
             self.frames.append(
                 StaticRectangleBody(1,
                                     CartesianPlane(self.window, (40, 40), vec),
                                     (40, 40)))
-            vec = self.plane.createVector(width/2, y)
+            vec = self.plane.createVector(width / 2, y)
             self.frames.append(
                 StaticRectangleBody(1,
                                     CartesianPlane(self.window, (40, 40), vec),
                                     (40, 40)))
             y -= 40
 
-        x = -width/2 + 40
+        x = -width / 2 + 40
         for i in range(47):
             vec = self.plane.createVector(x, height / 2)
             self.frames.append(
@@ -57,7 +57,7 @@ class Test(Game):
         self.shape_size = 40
         self.shape_vertex = 4
         self.type = 0
-        self.shape_dir = math.pi/4
+        self.shape_dir = math.pi / 4
         self.create_shape()
 
     def USR_eventHandler(self, event):
@@ -79,8 +79,8 @@ class Test(Game):
                 self.shape_size *= 1.1
                 self.current_shape.scale(1.1)
             elif event.key == pg.K_DOWN:
-                self.shape_size *= 1/1.1
-                self.current_shape.scale(1/1.1)
+                self.shape_size *= 1 / 1.1
+                self.current_shape.scale(1 / 1.1)
             elif event.key == pg.K_RIGHT:
                 self.shape_dir += -0.1
                 self.current_shape.rotate(-0.1)
