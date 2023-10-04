@@ -1,3 +1,3 @@
-[submodule "Game"]
-	path = Game
-	url = https://github.com/Gantulga9480/Game.git
+[submodule "PyGameWizard"]
+	path = PyGameWizard
+	url = https://github.com/Gantulga9480/PyGameWizard.git

@@ -1,9 +1,9 @@
-from Game.Game.game import Game
-from Game.Game.physics.body import (Body,
-                                    StaticRectangleBody,
-                                    StaticPolygonBody,
-                                    DynamicPolygonBody)
-from Game.Game.graphic.cartesian import CartesianPlane
+from pygw import Game
+from pygw.graphic import CartesianPlane
+from pygw.physics import (Body,
+                          StaticRectangleBody,
+                          StaticPolygonBody,
+                          DynamicPolygonBody)
 import pygame as pg
 import math
 import json
@@ -12,42 +12,42 @@ import datetime as dt
 
 class Test(Game):
 
-    def __init__(self,
-                 title: str = 'PyGameDemo',
-                 width: int = 1920,
-                 height: int = 1080,
-                 fps: int = 60,
-                 flags: int = pg.FULLSCREEN | pg.HWSURFACE,
-                 render: bool = True) -> None:
-        super().__init__(title, width, height, fps, flags, render)
+    def __init__(self) -> None:
+        super().__init__()
 
-        self.plane = CartesianPlane(self.window, (width, height),
+        self.title = 'Env editor'
+        self.size = (1920, 1080)
+        self.fps = 60
+        self.window_flags = pg.FULLSCREEN | pg.HWSURFACE
+
+        self.plane = CartesianPlane(self.window, self.size,
                                     unit_length=1)
         self.frames: list[Body] = []
         self.bodies = []
 
-        y = height / 2
+    def setup(self):
+        y = self.size[1] / 2
         for i in range(28):
-            vec = self.plane.createVector(-width / 2, y)
+            vec = self.plane.createVector(-self.size[0] / 2, y)
             self.frames.append(
                 StaticRectangleBody(1,
                                     CartesianPlane(self.window, (40, 40), vec),
                                     (40, 40)))
-            vec = self.plane.createVector(width / 2, y)
+            vec = self.plane.createVector(self.size[0] / 2, y)
             self.frames.append(
                 StaticRectangleBody(1,
                                     CartesianPlane(self.window, (40, 40), vec),
                                     (40, 40)))
             y -= 40
 
-        x = -width / 2 + 40
+        x = -self.size[0] / 2 + 40
         for i in range(47):
-            vec = self.plane.createVector(x, height / 2)
+            vec = self.plane.createVector(x, self.size[1] / 2)
             self.frames.append(
                 StaticRectangleBody(1,
                                     CartesianPlane(self.window, (40, 40), vec),
                                     (40, 40)))
-            vec = self.plane.createVector(x, -height / 2)
+            vec = self.plane.createVector(x, -self.size[1] / 2)
             self.frames.append(
                 StaticRectangleBody(1,
                                     CartesianPlane(self.window, (40, 40), vec),
@@ -60,7 +60,7 @@ class Test(Game):
         self.shape_dir = math.pi / 4
         self.create_shape()
 
-    def USR_eventHandler(self, event):
+    def onEvent(self, event):
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_c:
                 self.create_shape()
@@ -118,11 +118,12 @@ class Test(Game):
                     json.dump(d, f)
                 self.running = False
 
-    def USR_loop(self):
+    def loop(self):
         self.current_vec.x = self.plane.to_x(self.mouse_x)
         self.current_vec.y = self.plane.to_y(self.mouse_y)
 
-    def USR_render(self):
+    def onRender(self):
+        self.window.fill((255, 255, 255))
         if self.current_shape.type == 1:
             self.current_shape.shape.color = (0, 0, 255)
             self.current_shape.show()
@@ -152,4 +153,4 @@ class Test(Game):
         self.current_shape.rotate(self.shape_dir)
 
 
-Test().mainloop()
+Test().loop_forever()
