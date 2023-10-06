@@ -124,6 +124,7 @@ class Test(Game):
 
     def onRender(self):
         self.window.fill((255, 255, 255))
+        self.current_shape.shape.sync()
         if self.current_shape.type == 1:
             self.current_shape.shape.color = (0, 0, 255)
             self.current_shape.show()

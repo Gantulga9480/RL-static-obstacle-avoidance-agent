@@ -1,12 +1,12 @@
-from Game.Game.game import Game
-from Game.Game.graphic import CartesianPlane
-from Game.Game.physics import (Body,
+from pygw import Game
+from pygw.graphic import CartesianPlane
+from pygw.physics import (Body,
                           DynamicPolygonBody,
                           StaticPolygonBody,
                           StaticRectangleBody,
                           FreePolygonBody,
                           Ray)
-from Game.Game.physics import EnginePolygon as Engine
+from pygw.physics import EnginePolygon as Engine
 import pygame as pg
 import numpy as np
 import json
@@ -18,9 +18,17 @@ RIGHT = 1
 BREAK = 2
 LEFT = 3
 
-MAX_SPEED = 7
+FPS = 60
+MAX_SPEED = 600
+ROT_SPEED = 2
 SENSOR_RADIUS = 200
 SENSOR_COUNT = 20
+DRAG_COEF = 0.03
+FRIC_COEF = 0.3
+
+WALL_ID = 0
+AGENT_ID = 1
+SENSOR_ID = 1
 
 
 class Sensor:
@@ -34,7 +42,7 @@ class Sensor:
         for i in range(ray_count):
             r = Ray(id, plane, radius)
             r.shape.color = (230, 230, 230)
-            r.shape.vertices[0].rotate(np.pi/2 + 2*np.pi/ray_count * i)
+            r.shape.vertices[0].rotate(np.pi / 2 + 2 * np.pi / ray_count * i)
             self.rays.append(r)
 
     def state(self):
@@ -61,79 +69,32 @@ class Environment(Game):
         super().__init__()
         self.title = 'Test environment'
         self.size = (self.WIDTH, self.HEIGHT)
-        self.fps = 60
+        self.fps = FPS
         self.window_flags = pg.FULLSCREEN | pg.HWSURFACE
-        self.plane = CartesianPlane(self.window, self.size,
-                                    unit_length=1)
+        self.set_window()
+
+        self.plane = CartesianPlane(self.window, self.size, frame_rate=self.fps, unit_length=1)
         self.bodies: list[Body] = []
-
-        self.over = False
-
-        y = self.size[1] / 2
-        for _ in range(28):
-            vec = self.plane.createVector(-self.size[0]/2, y)
-            self.bodies.append(
-                StaticRectangleBody(0,
-                                    CartesianPlane(self.window, (40, 40), vec),
-                                    (40, 40)))
-            vec = self.plane.createVector(self.size[0]/2, y)
-            self.bodies.append(
-                StaticRectangleBody(0,
-                                    CartesianPlane(self.window, (40, 40), vec),
-                                    (40, 40)))
-            y -= 40
-
-        x = -self.size[0]/2 + 40
-        for _ in range(47):
-            vec = self.plane.createVector(x, self.size[1] / 2)
-            self.bodies.append(
-                StaticRectangleBody(0,
-                                    CartesianPlane(self.window, (40, 40), vec),
-                                    (40, 40)))
-            vec = self.plane.createVector(x, -self.size[1] / 2)
-            self.bodies.append(
-                StaticRectangleBody(0,
-                                    CartesianPlane(self.window, (40, 40), vec),
-                                    (40, 40)))
-            x += 40
-
-        self.objects = dict()
-        self.agent_vec = None
-        self.agent_initial_pos = None
-
-        with open(path) as f:
-            self.objects = json.load(f)
-
-        for body in self.objects['bodies']:
-            vec = self.plane.createVector(body['x'], body['y'])
-            size = tuple([body['size'] for _ in range(body['shape'])])
-            if body['type'] == 1:
-                self.agent_vec = vec
-                self.agent_initial_pos = (body['x'], body['y'])
-                p = DynamicPolygonBody(
-                    1, CartesianPlane(self.window, (40, 40), vec),
-                    size, MAX_SPEED)
-                p.shape.color = (255, 0, 255)
-            else:
-                p = StaticPolygonBody(
-                    0, CartesianPlane(self.window, (40, 40), vec), size)
-            p.rotate(body['dir'])
-            self.bodies.append(p)
+        self.create_wall()
+        self.load_env(path)
 
         self.agent: DynamicPolygonBody = self.bodies[-1]
-        self.sensor = Sensor(1, self.plane.createPlane(),
+        self.sensor = Sensor(SENSOR_ID, self.plane.createPlane(),
                              SENSOR_COUNT, SENSOR_RADIUS)
-        a = FreePolygonBody(1, self.plane.createPlane(), (17, 5, 5))
-        a.shape.color = (0, 0, 255)
-        self.agent.attach(a, True)
         for r in self.sensor.rays:
             self.agent.attach(r, True)
+        # Agent dir indicator
+        a = FreePolygonBody(AGENT_ID, self.plane.createPlane(), (17, 5, 5))
+        a.shape.color = (0, 0, 255)
+        self.agent.attach(a, True)
 
         self.bodies.extend(self.sensor.rays)
         self.bodies.append(a)
 
-        self.engine = Engine(self.plane,
-                             np.array(self.bodies, dtype=Body))
+        self.engine = Engine(self.plane, np.array(self.bodies, dtype=Body))
+
+        self.over = False
+        self.last_sensor_state = []
 
     def step(self, action):
         if action == FORWARD:
@@ -149,6 +110,14 @@ class Environment(Game):
         self.loop_once()
         return self.get_reward(), self.get_state()
 
+    def loop(self):
+        # First apply control ...
+        self.manual_control()
+        # ... then let the game engine do it's job
+        self.engine.step()
+        # Save sensor values before render phase, because they will be lost forever
+        self.last_sensor_state = self.sensor.state()
+
     def reset(self):
         self.over = False
         unit_vec = self.agent.velocity.unit(vector=False)
@@ -156,36 +125,11 @@ class Environment(Game):
         self.agent.velocity = self.agent.shape.plane.createVector(unit_vec[0],
                                                                   unit_vec[1],
                                                                   MAX_SPEED, 1)
+        # Run one iter after reset to apply the change
         self.loop_once()
         return self.get_state()
 
-    def get_reward(self):
-        st = self.sensor.state()
-        s = self.agent.speed()
-        r = s / (MAX_SPEED/2) if s >= 0.1 else -1
-        r += ((st[0] - SENSOR_RADIUS) / SENSOR_RADIUS
-              if st[0] < SENSOR_RADIUS
-              else 0.5)
-        # r += ((st[1] - SENSOR_RADIUS/2) / SENSOR_RADIUS
-        #       if st[1] < SENSOR_RADIUS/2
-        #       else 0.2)
-        # r += ((st[-1] - SENSOR_RADIUS/2) / SENSOR_RADIUS
-        #       if st[-1] < SENSOR_RADIUS/2
-        #       else 0.2)
-        # r += ((st[2] - SENSOR_RADIUS/3) / SENSOR_RADIUS
-        #       if st[2] < SENSOR_RADIUS/3
-        #       else 0.1)
-        # r += ((st[-2] - SENSOR_RADIUS/3) / SENSOR_RADIUS
-        #       if st[-2] < SENSOR_RADIUS/3
-        #       else 0.1)
-        return r
-
-    def get_state(self):
-        state = self.sensor.state()
-        state.append(self.agent.speed())
-        return state
-
-    def USR_eventHandler(self, event):
+    def onEvent(self, event):
         if event.type == pg.KEYDOWN:
             if event.key == pg.K_q:
                 self.over = True
@@ -193,25 +137,88 @@ class Environment(Game):
             elif event.key == pg.K_r:
                 self.over = True
 
-    # def USR_loop(self):
-    #     """Manual control"""
-    #     if self.keys[pg.K_UP]:
-    #         self.agent.Accelerate(0.15)
-    #     elif self.keys[pg.K_DOWN]:
-    #         self.agent.Accelerate(-0.15)
-    #     if self.keys[pg.K_LEFT]:
-    #         self.agent.rotate(0.05)
-    #     elif self.keys[pg.K_RIGHT]:
-    #         self.agent.rotate(-0.05)
+    def onRender(self):
+        self.window.fill((255, 255, 255))
+        for b in self.bodies:
+            b.show()
 
-    def USR_render(self):
-        self.sensor.reset()
-        self.engine.update()
+    def get_reward(self):
+        st = self.sensor.state()
+        s = self.agent.speed()
+        r = s / (MAX_SPEED / 2) if s >= 0.1 else -1
+        r += ((st[0] - SENSOR_RADIUS) / SENSOR_RADIUS
+              if st[0] < SENSOR_RADIUS
+              else 0.5)
+        return r
+
+    def get_state(self):
+        state = self.last_sensor_state.copy()
+        state.append(self.agent.speed())
+        return state
+
+    def manual_control(self):
+        """Manual control"""
+        if self.keys[pg.K_UP]:
+            self.agent.accelerate(MAX_SPEED / 2)
+        elif self.keys[pg.K_DOWN]:
+            self.agent.accelerate(-MAX_SPEED / 2)
+        if self.keys[pg.K_LEFT]:
+            self.agent.rotate(ROT_SPEED)
+        elif self.keys[pg.K_RIGHT]:
+            self.agent.rotate(-ROT_SPEED)
+
+    def load_env(self, path):
+        with open(path) as f:
+            self.objects = json.load(f)
+
+        for body in self.objects['bodies']:
+            vec = self.plane.createVector(body['x'], body['y'])
+            size = tuple([body['size'] for _ in range(body['shape'])])
+            if body['type'] == 1:
+                self.agent_vec = vec
+                self.agent_initial_pos = (body['x'], body['y'])
+                p = DynamicPolygonBody(
+                    AGENT_ID, CartesianPlane(self.window, (40, 40), vec, frame_rate=self.fps),
+                    size, MAX_SPEED, drag_coef=DRAG_COEF, friction_coef=FRIC_COEF)
+                p.shape.color = (255, 0, 255)
+            else:
+                p = StaticPolygonBody(
+                    WALL_ID, CartesianPlane(self.window, (40, 40), vec, frame_rate=self.fps), size)
+            p.rotate(body['dir'])
+            self.bodies.append(p)
+
+    def create_wall(self):
+        y = self.size[1] / 2
+        for _ in range(28):
+            vec = self.plane.createVector(-self.size[0] / 2, y)
+            self.bodies.append(
+                StaticRectangleBody(WALL_ID,
+                                    CartesianPlane(self.window, (40, 40), vec),
+                                    (40, 40)))
+            vec = self.plane.createVector(self.size[0] / 2, y)
+            self.bodies.append(
+                StaticRectangleBody(WALL_ID,
+                                    CartesianPlane(self.window, (40, 40), vec),
+                                    (40, 40)))
+            y -= 40
+
+        x = -self.size[0] / 2 + 40
+        for _ in range(47):
+            vec = self.plane.createVector(x, self.size[1] / 2)
+            self.bodies.append(
+                StaticRectangleBody(WALL_ID,
+                                    CartesianPlane(self.window, (40, 40), vec),
+                                    (40, 40)))
+            vec = self.plane.createVector(x, -self.size[1] / 2)
+            self.bodies.append(
+                StaticRectangleBody(WALL_ID,
+                                    CartesianPlane(self.window, (40, 40), vec),
+                                    (40, 40)))
+            x += 40
 
 
 if __name__ == '__main__':
-    env = Environment()
+    env = Environment('test_env.json')
 
     while env.running:
         env.loop_once()
-        print(env.sensor.state())
