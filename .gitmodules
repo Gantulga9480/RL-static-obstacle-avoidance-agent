@@ -1,3 +1,6 @@
 [submodule "PyGameWizard"]
 	path = PyGameWizard
 	url = https://github.com/Gantulga9480/PyGameWizard.git
+[submodule "PyRL"]
+	path = PyRL
+	url = https://github.com/Gantulga9480/PyRL.git
