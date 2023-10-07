@@ -13,22 +13,26 @@ import json
 import math
 
 
+WALL_ID = 0
+AGENT_ID = 1
+SENSOR_ID = 1
+
 FORWARD = 0
 RIGHT = 1
 BREAK = 2
 LEFT = 3
 
 FPS = 60
-MAX_SPEED = 600
+MAX_SPEED = 300
+SPEED_RATE = 10
 ROT_SPEED = 2
 SENSOR_RADIUS = 200
 SENSOR_COUNT = 20
-DRAG_COEF = 0.03
+DRAG_COEF = 0.01
 FRIC_COEF = 0.3
 
-WALL_ID = 0
-AGENT_ID = 1
-SENSOR_ID = 1
+STATE_SPACE_SIZE = SENSOR_COUNT + 1
+ACTION_SPACE_SIZE = 4
 
 
 class Sensor:
@@ -98,13 +102,13 @@ class Environment(Game):
 
     def step(self, action):
         if action == FORWARD:
-            self.agent.Accelerate(0.15)
+            self.agent.accelerate(SPEED_RATE)
         elif action == BREAK:
-            self.agent.Accelerate(-0.15)
+            self.agent.accelerate(-SPEED_RATE)
         elif action == LEFT:
-            self.agent.rotate(0.06)
+            self.agent.rotate(ROT_SPEED)
         elif action == RIGHT:
-            self.agent.rotate(-0.06)
+            self.agent.rotate(-ROT_SPEED)
         else:
             raise ValueError('Unknown action')
         self.loop_once()
@@ -112,7 +116,8 @@ class Environment(Game):
 
     def loop(self):
         # First apply control ...
-        self.manual_control()
+        if __name__ == '__main__':
+            self.manual_control()
         # ... then let the game engine do it's job
         self.engine.step()
         # Save sensor values before render phase, because they will be lost forever
@@ -143,12 +148,11 @@ class Environment(Game):
             b.show()
 
     def get_reward(self):
-        st = self.sensor.state()
         s = self.agent.speed()
-        r = s / (MAX_SPEED / 2) if s >= 0.1 else -1
-        r += ((st[0] - SENSOR_RADIUS) / SENSOR_RADIUS
-              if st[0] < SENSOR_RADIUS
-              else 0.5)
+        r = s / MAX_SPEED if s > 0 else -1
+        # r += ((st[0] - SENSOR_RADIUS) / (SENSOR_RADIUS * 2)
+        #       if st[0] < SENSOR_RADIUS
+        #       else 0.5)
         return r
 
     def get_state(self):
@@ -159,9 +163,9 @@ class Environment(Game):
     def manual_control(self):
         """Manual control"""
         if self.keys[pg.K_UP]:
-            self.agent.accelerate(MAX_SPEED / 2)
+            self.agent.accelerate(SPEED_RATE)
         elif self.keys[pg.K_DOWN]:
-            self.agent.accelerate(-MAX_SPEED / 2)
+            self.agent.accelerate(-SPEED_RATE)
         if self.keys[pg.K_LEFT]:
             self.agent.rotate(ROT_SPEED)
         elif self.keys[pg.K_RIGHT]:
