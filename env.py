@@ -83,8 +83,7 @@ class Environment(Game):
         self.load_env(path)
 
         self.agent: DynamicPolygonBody = self.bodies[-1]
-        self.sensor = Sensor(SENSOR_ID, self.plane.createPlane(),
-                             SENSOR_COUNT, SENSOR_RADIUS)
+        self.sensor = Sensor(SENSOR_ID, self.plane.createPlane(), SENSOR_COUNT, SENSOR_RADIUS)
         for r in self.sensor.rays:
             self.agent.attach(r, True)
         # Agent dir indicator
@@ -127,9 +126,10 @@ class Environment(Game):
         self.over = False
         unit_vec = self.agent.velocity.unit(vector=False)
         self.agent_vec.head = self.agent_initial_pos
-        self.agent.velocity = self.agent.shape.plane.createVector(unit_vec[0],
+        # TODO fix
+        self.agent.velocity.head = self.agent.shape.plane.createVector(unit_vec[0],
                                                                   unit_vec[1],
-                                                                  MAX_SPEED, 1)
+                                                                  MAX_SPEED, 1).head
         # Run one iter after reset to apply the change
         self.loop_once()
         return self.get_state()
