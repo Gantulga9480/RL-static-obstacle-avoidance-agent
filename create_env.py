@@ -83,10 +83,10 @@ class Test(Game):
                 self.current_shape.scale(1 / 1.1)
             elif event.key == pg.K_RIGHT:
                 self.shape_dir += -0.1
-                self.current_shape.rotate(-0.1)
+                self.current_shape.rotate(-0.1 * self.fps)
             elif event.key == pg.K_LEFT:
                 self.shape_dir += 0.1
-                self.current_shape.rotate(0.1)
+                self.current_shape.rotate(0.1 * self.fps)
             elif event.key == pg.K_q:
                 if self.shape_vertex > 3:
                     self.shape_vertex -= 1
