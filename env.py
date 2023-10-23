@@ -22,11 +22,12 @@ RIGHT = 1
 BREAK = 2
 LEFT = 3
 
+UNIT = 1
 FPS = 60
 MAX_SPEED = 300
 SPEED_RATE = 10
 ROT_SPEED = 2
-SENSOR_RADIUS = 200
+SENSOR_RADIUS = 200 / UNIT
 SENSOR_COUNT = 20
 DRAG_COEF = 0.01
 FRIC_COEF = 0.3
@@ -77,7 +78,7 @@ class Environment(Game):
         self.window_flags = pg.FULLSCREEN | pg.HWSURFACE
         self.set_window()
 
-        self.plane = CartesianPlane(self.window, self.size, frame_rate=self.fps, unit_length=1)
+        self.plane = CartesianPlane(self.window, self.size, frame_rate=self.fps, unit_length=UNIT)
         self.bodies: list[Body] = []
         self.create_wall()
         self.load_env(path)
@@ -87,7 +88,7 @@ class Environment(Game):
         for r in self.sensor.rays:
             self.agent.attach(r, True)
         # Agent dir indicator
-        a = FreePolygonBody(AGENT_ID, self.plane.createPlane(), (17, 5, 5))
+        a = FreePolygonBody(AGENT_ID, self.plane.createPlane(), (17 / UNIT, 5 / UNIT, 5 / UNIT))
         a.shape.color = (0, 0, 255)
         self.agent.attach(a, True)
 
@@ -98,6 +99,7 @@ class Environment(Game):
 
         self.over = False
         self.last_sensor_state = []
+        self.step_counter = 0
 
     def step(self, action):
         if action == FORWARD:
@@ -111,7 +113,13 @@ class Environment(Game):
         else:
             raise ValueError('Unknown action')
         self.loop_once()
-        return self.get_reward(), self.get_state()
+        self.step_counter += 1
+        if self.step_counter >= 500:
+            done = True
+            self.step_counter = 0
+        else:
+            done = False
+        return self.get_state(), self.get_reward(), done
 
     def loop(self):
         # First apply control ...
@@ -119,7 +127,7 @@ class Environment(Game):
             self.manual_control()
         # ... then let the game engine do it's job
         self.engine.step()
-        # Save sensor values before render phase, because they will be lost forever
+        # Save sensor values before render phase, because they will be lost forever at render phase
         self.last_sensor_state = self.sensor.state()
 
     def reset(self):
@@ -127,9 +135,7 @@ class Environment(Game):
         unit_vec = self.agent.velocity.unit(vector=False)
         self.agent_vec.head = self.agent_initial_pos
         # TODO fix
-        self.agent.velocity.head = self.agent.shape.plane.createVector(unit_vec[0],
-                                                                  unit_vec[1],
-                                                                  MAX_SPEED, 1).head
+        self.agent.velocity.head = self.agent.shape.plane.createVector(unit_vec[0], unit_vec[1], MAX_SPEED, 1).head
         # Run one iter after reset to apply the change
         self.loop_once()
         return self.get_state()
@@ -140,7 +146,7 @@ class Environment(Game):
                 self.over = True
                 self.running = False
             elif event.key == pg.K_r:
-                self.over = True
+                self.reset()
 
     def onRender(self):
         self.window.fill((255, 255, 255))
@@ -158,7 +164,7 @@ class Environment(Game):
     def get_state(self):
         state = self.last_sensor_state.copy()
         state.append(self.agent.speed())
-        return state
+        return np.array(state)
 
     def manual_control(self):
         """Manual control"""
@@ -176,13 +182,13 @@ class Environment(Game):
             self.objects = json.load(f)
 
         for body in self.objects['bodies']:
-            vec = self.plane.createVector(body['x'], body['y'])
-            size = tuple([body['size'] for _ in range(body['shape'])])
+            vec = self.plane.createVector(body['x'] / UNIT, body['y'] / UNIT)
+            size = tuple([body['size'] / UNIT for _ in range(body['shape'])])
             if body['type'] == 1:
                 self.agent_vec = vec
-                self.agent_initial_pos = (body['x'], body['y'])
+                self.agent_initial_pos = (body['x'] / UNIT, body['y'] / UNIT)
                 p = DynamicPolygonBody(
-                    AGENT_ID, CartesianPlane(self.window, (40, 40), vec, frame_rate=self.fps),
+                    AGENT_ID, CartesianPlane(self.window, (40, 40), vec, self.fps, UNIT),
                     size, MAX_SPEED, drag_coef=DRAG_COEF, friction_coef=FRIC_COEF)
                 p.shape.color = (255, 0, 255)
             else:
@@ -192,33 +198,34 @@ class Environment(Game):
             self.bodies.append(p)
 
     def create_wall(self):
-        y = self.size[1] / 2
+        WALL_SIZE = 40 / UNIT
+        y = self.size[1] / (2 * UNIT)
         for _ in range(28):
-            vec = self.plane.createVector(-self.size[0] / 2, y)
+            vec = self.plane.createVector(-self.size[0] / (2 * UNIT), y)
             self.bodies.append(
                 StaticRectangleBody(WALL_ID,
-                                    CartesianPlane(self.window, (40, 40), vec),
-                                    (40, 40)))
-            vec = self.plane.createVector(self.size[0] / 2, y)
+                                    CartesianPlane(self.window, (WALL_SIZE, WALL_SIZE), vec),
+                                    (WALL_SIZE, WALL_SIZE)))
+            vec = self.plane.createVector(self.size[0] / (2 * UNIT), y)
             self.bodies.append(
                 StaticRectangleBody(WALL_ID,
-                                    CartesianPlane(self.window, (40, 40), vec),
-                                    (40, 40)))
-            y -= 40
+                                    CartesianPlane(self.window, (WALL_SIZE, WALL_SIZE), vec),
+                                    (WALL_SIZE, WALL_SIZE)))
+            y -= WALL_SIZE
 
-        x = -self.size[0] / 2 + 40
+        x = -self.size[0] / (2 * UNIT) + WALL_SIZE
         for _ in range(47):
-            vec = self.plane.createVector(x, self.size[1] / 2)
+            vec = self.plane.createVector(x, self.size[1] / (2 * UNIT))
             self.bodies.append(
                 StaticRectangleBody(WALL_ID,
-                                    CartesianPlane(self.window, (40, 40), vec),
-                                    (40, 40)))
-            vec = self.plane.createVector(x, -self.size[1] / 2)
+                                    CartesianPlane(self.window, (WALL_SIZE, WALL_SIZE), vec),
+                                    (WALL_SIZE, WALL_SIZE)))
+            vec = self.plane.createVector(x, -self.size[1] / (2 * UNIT))
             self.bodies.append(
                 StaticRectangleBody(WALL_ID,
-                                    CartesianPlane(self.window, (40, 40), vec),
-                                    (40, 40)))
-            x += 40
+                                    CartesianPlane(self.window, (WALL_SIZE, WALL_SIZE), vec),
+                                    (WALL_SIZE, WALL_SIZE)))
+            x += WALL_SIZE
 
 
 if __name__ == '__main__':
