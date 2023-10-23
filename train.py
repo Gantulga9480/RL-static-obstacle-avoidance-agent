@@ -51,11 +51,9 @@ agent.create_model(Actor, Critic, actor_lr=0.0003, critic_lr=0.003, gamma=0.99, 
 try:
     while agent.episode_counter < 1000:
         state = env.reset()
-        done = False
-        while not done:
+        while not env.over:
             action = agent.policy(state)
-            next_state, reward, d, t, _ = env.step(action)
-            done = d or t
+            next_state, reward, done = env.step(action)
             agent.learn(state, action, next_state, reward, done)
             state = next_state
 except KeyboardInterrupt:
