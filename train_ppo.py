@@ -58,7 +58,6 @@ try:
             state = next_state
 except KeyboardInterrupt:
     pass
-env.close()
 
 agent.eval()
 
